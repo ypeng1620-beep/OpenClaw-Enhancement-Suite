@@ -2,7 +2,26 @@
   "name": "@openclaw/suite-mcp-hub",
   "version": "0.1.0",
   "type": "module",
+  "description": "MCP server integration hub for OpenClaw Suite",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server/MCPServerRegistry.js",
+    "./mapper": "./dist/mapper/MCPToolMapper.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
