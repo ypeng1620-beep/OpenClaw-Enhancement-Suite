@@ -13,14 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10 --activate
 
       - run: pnpm install --frozen-lockfile
 
@@ -40,14 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10 --activate
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint || true
@@ -59,14 +59,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10 --activate
 
       - run: pnpm install --frozen-lockfile
 
@@ -80,14 +80,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10 --activate
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @openclaw/suite-integration-tests run test:coverage || true
