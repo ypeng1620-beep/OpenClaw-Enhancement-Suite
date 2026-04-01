@@ -2,6 +2,26 @@
 
 > OpenClaw 的能力增强套件，让 AI Agent 更强、更可控、更持久。
 
+## 快速开始
+
+```bash
+# 安装
+git clone https://github.com/ypeng1620-beep/OpenClaw-Enhancement-Suite.git
+cd OpenClaw-Enhancement-Suite
+pnpm install
+pnpm run build
+
+# 初始化 ToolHub
+npx tsx -e "
+import { ToolRegistry } from '@openclaw/suite-tool-hub'
+const registry = new ToolRegistry()
+await registry.register({ id: 'my-tool', name: 'hello', namespace: 'test', version: '1.0.0', description: '', inputSchema: { type: 'object' }, execute: async () => ({ result: 'Hello!' }) })
+console.log(await registry.list())
+"
+```
+
+**要求**: Node.js >= 20.0.0 | **版本**: v0.1.0 | **OpenClaw**: v2.x 兼容
+
 ## 架构
 
 ```
