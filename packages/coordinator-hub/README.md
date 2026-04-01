@@ -4,125 +4,166 @@
 
 ## 状态
 
-✅ Phase 5 完成
+✅ Phase 5 完成（含重试机制、父子策略、超时清理、ask 集成）
 
-## 功能
+## 核心功能
 
-### 任务管理器 (TaskManager)
-- 任务创建、状态跟踪
-- 父子任务关系
-- 超时控制
-- 事件监听
+### TaskManager
+- **任务生命周期**：create → start → complete/fail/cancel/timeout
+- **重试机制**：自动重试（指数退避）、手动 retryTask
+- **父子任务策略**：`all_success` | `any_success` | `manual`
+- **超时自动清理**：超时后向下传播取消子任务
+- **ask 效果集成**：`setWaitingApproval` / `resolveApproval`
+- **事件系统**：`subscribe` / `once` / `destroy`
+- **可替换存储**：`TaskStore` 接口（默认内存）
 
-### 权限确认处理器 (PermissionAskHandler)
-- 处理 ask 效果的权限请求
-- 用户确认对话框
-- 超时控制
+### PermissionAskHandler
+- `requestConfirmation` → Promise<boolean>
+- `createPermissionCheckerWrapper` 包装权限检查器
+
+## 父子任务策略
+
+```typescript
+// all_success（默认）：全部子任务成功父任务才成功；任一失败父任务失败
+const manager = new TaskManager({ parentCompletionStrategy: 'all_success' })
+
+// any_success：任一子任务成功父任务即成功；全部失败父任务才失败
+const manager = new TaskManager({ parentCompletionStrategy: 'any_success' })
+
+// manual：调用方显式决定父任务状态
+const manager = new TaskManager({ parentCompletionStrategy: 'manual' })
+```
 
 ## 使用示例
 
-### 基本使用
+### 基本用法
 
 ```typescript
-import { TaskManager } from '@openclaw/suite-coordinator-hub'
-
-const taskManager = new TaskManager({
-  defaultTimeout: 300000, // 5 分钟
+const manager = new TaskManager({
+  defaultTimeout: 300000,
   maxConcurrentTasks: 10,
+  parentCompletionStrategy: 'all_success',
+  defaultMaxRetries: 3,
+  defaultRetryDelay: 5000,
 })
 
-// 创建任务
-const task = await taskManager.createTask({
+// 订阅事件
+manager.subscribe('completed', (e) => {
+  if (e.type === 'completed') console.log(`任务完成: ${e.taskId}`)
+})
+
+// 创建并启动
+const task = await manager.createTask({
   description: '分析股票',
-  prompt: '请分析贵州茅台的股价',
+  prompt: '分析贵州茅台',
   type: 'research',
 })
 
-// 监听任务事件
-taskManager.subscribe((event) => {
-  if (event.type === 'completed') {
-    console.log(`任务 ${event.taskId} 完成`)
-  }
-})
-
-// 完成任务
-await taskManager.completeTask(task.id, { analysis: '...' })
+await manager.startTask(task.id)
+await manager.updateProgress(task.id, 50, '正在分析...')
+await manager.completeTask(task.id, { analysis: '...' })
 ```
 
-### 任务分解
+### 重试机制
 
 ```typescript
-// 父任务分解为子任务
-const parentTask = await taskManager.createTask({
-  description: '完成项目分析',
-  prompt: '全面分析这个项目',
-  type: 'general',
+// 自动重试（失败时自动调度）
+await manager.scheduleRetry(task.id, {
+  maxRetries: 3,
+  retryDelay: 5000,
+  backoff: 'exponential',  // 线性或指数
+  maxDelay: 60000,
 })
 
-const subtasks = await taskManager.createSubtasks(parentTask.id, [
-  {
-    description: '技术分析',
-    prompt: '分析技术栈',
-    type: 'research',
-  },
-  {
-    description: '市场分析',
-    prompt: '分析市场规模',
-    type: 'research',
-  },
+// 手动重试（重新执行）
+await manager.retryTask(taskId)
+```
+
+### 父子任务
+
+```typescript
+const parent = await manager.createTask({
+  description: '全面分析',
+  prompt: '',
+})
+
+const [sub1, sub2] = await manager.createSubtasks(parent.id, [
+  { description: '财务', prompt: '' },
+  { description: '市场', prompt: '' },
 ])
 
-// 子任务全部完成后，父任务自动完成
+// 所有子任务完成后，父任务自动完成
 ```
 
-### 权限确认
+### ask 效果集成（权限确认）
 
 ```typescript
-import { PermissionAskHandler } from '@openclaw/suite-coordinator-hub'
+// 权限检查返回 ask 时，暂停任务等待用户确认
+const approved = await manager.setWaitingApproval(
+  taskId,
+  askHandler.requestConfirmation(request, reason)
+)
 
-const askHandler = new PermissionAskHandler({
-  defaultTimeout: 60000,
-  onAsk: async (request) => {
-    // 显示确认对话框
-    const message = formatConfirmationMessage(request.request, request.reason)
-    return await showConfirmDialog(message)
-  },
-  onTimeout: (request) => {
-    console.log(`权限请求 ${request.id} 超时`)
-  },
-})
-
-// 包装权限检查器
-const wrappedChecker = askHandler.createPermissionCheckerWrapper(originalChecker)
+// 外部（如消息通道）调用：
+manager.resolveApproval(taskId, true)  // 允许
+manager.rejectApproval(taskId, '用户拒绝')  // 拒绝
 ```
 
 ## API
 
 ### TaskManager
-```typescript
-const manager = new TaskManager({
-  defaultTimeout: 300000,
-  maxConcurrentTasks: 10,
-})
 
-manager.createTask(submission)       // 创建任务
-manager.getTask(taskId)           // 获取任务
-manager.listTasks(filter)         // 列出任务
-manager.startTask(taskId)         // 开始任务
-manager.completeTask(taskId, result)  // 完成任务
-manager.failTask(taskId, error)   // 标记失败
-manager.cancelTask(taskId)        // 取消任务
-manager.createSubtasks(parentId, submissions)  // 创建子任务
-manager.subscribe(handler)         // 监听事件
+```typescript
+// 创建/查询
+createTask(submission, retryOpts?)    // 创建任务
+createSubtasks(parentId, submissions)  // 批量创建子任务
+getTask(taskId)                        // 获取任务
+listTasks(filter?)                    // 列出任务
+
+// 生命周期
+startTask(taskId)                     // 启动
+completeTask(taskId, result)          // 完成
+failTask(taskId, error, strategy?)    // 失败（可指定策略）
+cancelTask(taskId)                   // 取消
+deleteTask(taskId)                   // 删除
+
+// 重试
+scheduleRetry(taskId, options?)       // 自动重试调度
+retryTask(taskId)                    // 手动重试
+
+// ask 效果
+setWaitingApproval(taskId, promise)   // 暂停等待确认
+resolveApproval(taskId, approved)    // 解析确认
+rejectApproval(taskId, reason)       // 拒绝确认
+
+// 分配
+assignTask(taskId, agentId)          // 分配给 Agent
+
+// 事件
+subscribe(eventType, handler)        // 订阅事件
+once(eventType, handler)             // 一次性订阅
+
+// 生命周期
+destroy()                           // 销毁，清理所有资源
 ```
 
-### PermissionAskHandler
-```typescript
-const handler = new PermissionAskHandler({
-  onAsk: async (request) => showConfirmDialog(...),
-  onTimeout: (request) => log(...),
-})
+### TaskStore 接口
 
-handler.requestConfirmation(request, reason)  // 请求确认
-handler.resolveRequest(id, confirmed)      // 解析确认
+```typescript
+interface TaskStore {
+  save(task: Task): Promise<void>
+  get(taskId: string): Promise<Task | undefined>
+  query(filter?: TaskFilter): Promise<Task[]>
+  updateStatus(taskId: string, status: TaskStatus): Promise<void>
+  updateField<K extends keyof Task>(taskId: string, field: K, value: Task[K]): Promise<void>
+  delete(taskId: string): Promise<void>
+}
+```
+
+### 事件类型
+
+```typescript
+'created' | 'started' | 'progress' | 'completed' | 'failed'
+| 'cancelled' | 'timeout' | 'deleted' | 'retry_scheduled'
+| 'retry_executed' | 'waiting_approval' | 'approval_resolved'
 ```

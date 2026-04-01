@@ -5,11 +5,13 @@
 // Task Manager
 export {
   TaskManager,
-  createTaskManager,
   type TaskManagerOptions,
   type TaskStore,
   type TaskEvent,
   type TaskEventListener,
+  type RetryOptions,
+  type RetryState,
+  type ParentCompletionStrategy,
 } from './task/TaskManager.js'
 
 // Permission Ask Handler
@@ -38,10 +40,13 @@ export type {
 
 // Errors
 export {
+  CoordinatorError,
   COORDINATOR_ERROR_CODES,
   taskNotFound,
   taskTimeout,
+  taskConcurrentLimit,
   agentNotFound,
   agentUnavailable,
   coordinationFailed,
+  parentTaskFailed,
 } from './errors.js'
