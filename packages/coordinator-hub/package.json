@@ -2,7 +2,26 @@
   "name": "@openclaw/suite-coordinator-hub",
   "version": "0.1.0",
   "type": "module",
+  "description": "Multi-agent coordination hub for OpenClaw Suite",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./task": "./dist/task/TaskManager.js",
+    "./ask": "./dist/ask/PermissionAskHandler.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
