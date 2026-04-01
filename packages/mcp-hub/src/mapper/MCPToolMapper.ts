@@ -8,6 +8,7 @@ import type {
   Tool,
   MCPTool,
   JSONSchema,
+  MapManyOptions,
 } from '@openclaw/suite-core'
 import { mcpMapperFailed } from '../errors.js'
 
@@ -47,6 +48,14 @@ const DEFAULT_OPTIONS: Required<MapperOptions> = {
   includeServerName: true,
   defaultVersion: '1.0.0',
   customMetadata: {},
+}
+
+/**
+ * 默认分批选项
+ */
+const DEFAULT_BATCH_OPTIONS: MapManyOptions = {
+  batchSize: 50,
+  parallel: true,
 }
 
 /**
@@ -96,23 +105,66 @@ export class MCPToolMapper {
   }
 
   /**
-   * 批量映射
+   * 批量映射（支持分批和进度回调）
+   *
+   * @param mcpTools MCP 工具列表
+   * @param serverName 服务器名称
+   * @param options 分批选项（可选）
    */
   async mapMany(
     mcpTools: MCPTool[],
-    serverName: string
+    serverName: string,
+    options?: MapManyOptions
   ): Promise<MappingResult> {
+    const opts = { ...DEFAULT_BATCH_OPTIONS, ...options }
     const tools: Tool[] = []
     const errors: string[] = []
+    const total = mcpTools.length
+    const batchSize = opts.batchSize ?? 50
 
-    for (const mcpTool of mcpTools) {
-      try {
-        tools.push(this.map(mcpTool, serverName))
-      } catch (error) {
-        errors.push(
-          `${serverName}/${mcpTool.name}: ${error instanceof Error ? error.message : String(error)}`
-        )
+    if (opts.parallel) {
+      // 并行分批处理
+      for (let i = 0; i < mcpTools.length; i += batchSize) {
+        const batch = mcpTools.slice(i, i + batchSize)
+        const batchResults = batch.map((mcpTool) => {
+          try {
+            return { tool: this.map(mcpTool, serverName), error: null }
+          } catch (error) {
+            return {
+              tool: null,
+              error: `${serverName}/${mcpTool.name}: ${error instanceof Error ? error.message : String(error)}`,
+            }
+          }
+        })
+
+        for (const result of batchResults) {
+          if (result.tool) {
+            tools.push(result.tool)
+          } else {
+            errors.push(result.error!)
+          }
+        }
+
+        opts.onProgress?.(tools.length + errors.length, total)
       }
+    } else {
+      // 串行处理
+      for (let i = 0; i < mcpTools.length; i++) {
+        const mcpTool = mcpTools[i]
+        try {
+          tools.push(this.map(mcpTool, serverName))
+        } catch (error) {
+          errors.push(
+            `${serverName}/${mcpTool.name}: ${error instanceof Error ? error.message : String(error)}`
+          )
+        }
+
+        // 每批报告进度
+        if (i % batchSize === 0) {
+          opts.onProgress?.(i + 1, total)
+        }
+      }
+      opts.onProgress?.(total, total)
     }
 
     return {
@@ -144,8 +196,6 @@ export class MCPToolMapper {
       return { type: 'object', properties: {} }
     }
 
-    // MCP 使用自己的 schema 格式，这里简化转换
-    // 实际应该更完整地处理 MCP 的 schema 类型
     const properties: Record<string, JSONSchema> = {}
     const required: string[] = []
 
@@ -160,7 +210,6 @@ export class MCPToolMapper {
             enum: val.enum as unknown[],
           }
 
-          // 检查是否必需
           if (val.required || (Array.isArray(val) && key === 'required')) {
             required.push(key)
           }

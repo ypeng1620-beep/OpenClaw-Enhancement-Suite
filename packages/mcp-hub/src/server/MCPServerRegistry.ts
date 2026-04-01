@@ -1,16 +1,17 @@
 /**
  * MCP 服务器注册表
  *
- * 管理 MCP 服务器配置和连接
+ * 管理 MCP 服务器配置和连接，以及与 ToolHub 的同步
  */
 
-import type { Tool } from '@openclaw/suite-core'
+import type { Tool, ToolRegistry } from '@openclaw/suite-core'
 import type {
   MCPServerConfig,
   MCPServer,
   HealthStatus,
 } from '@openclaw/suite-core'
 import { MCPConnectionManager } from './MCPConnectionManager.js'
+import { MCPToolMapper } from '../mapper/MCPToolMapper.js'
 import {
   mcpServerNotFound,
   mcpServerAlreadyExists,
@@ -23,11 +24,20 @@ export interface MCPServerRegistryOptions {
   /** 连接管理器 */
   connectionManager?: MCPConnectionManager
 
+  /** 工具映射器 */
+  toolMapper?: MCPToolMapper
+
   /** 配置路径 */
   configPath?: string
 
   /** 自动连接已保存的服务器 */
   autoConnect?: boolean
+
+  /** 同步到 ToolHub */
+  syncToToolHub?: ToolRegistry
+
+  /** 工具变化回调 */
+  onToolsChanged?: (serverName: string, tools: Tool[]) => void
 }
 
 /**
@@ -35,12 +45,18 @@ export interface MCPServerRegistryOptions {
  */
 export class MCPServerRegistry {
   private readonly connectionManager: MCPConnectionManager
+  private readonly toolMapper: MCPToolMapper
   private readonly configs: Map<string, MCPServerConfig> = new Map()
   private readonly autoConnect: boolean
+  private readonly syncToToolHub?: ToolRegistry
+  private readonly onToolsChanged?: (serverName: string, tools: Tool[]) => void
 
   constructor(options: MCPServerRegistryOptions = {}) {
     this.connectionManager = options.connectionManager || new MCPConnectionManager()
+    this.toolMapper = options.toolMapper || new MCPToolMapper()
     this.autoConnect = options.autoConnect ?? false
+    this.syncToToolHub = options.syncToToolHub
+    this.onToolsChanged = options.onToolsChanged
   }
 
   // =========================================================================
@@ -61,6 +77,7 @@ export class MCPServerRegistry {
     if (this.autoConnect) {
       try {
         await this.connectionManager.connect(config)
+        await this.syncServerTools(config.name)
       } catch (error) {
         console.error(`[MCPServerRegistry] Auto-connect failed for ${config.name}:`, error)
       }
@@ -80,7 +97,10 @@ export class MCPServerRegistry {
    * 移除服务器
    */
   async unregister(name: string): Promise<void> {
-    // 先断开连接
+    // 从 ToolHub 移除工具
+    await this.removeToolsFromToolHub(name)
+
+    // 断开连接
     await this.connectionManager.disconnect(name)
     this.configs.delete(name)
   }
@@ -113,12 +133,14 @@ export class MCPServerRegistry {
     }
 
     await this.connectionManager.connect(config)
+    await this.syncServerTools(name)
   }
 
   /**
    * 停止服务器
    */
   async stop(name: string): Promise<void> {
+    await this.disableToolsInToolHub(name)
     await this.connectionManager.disconnect(name)
   }
 
@@ -126,8 +148,10 @@ export class MCPServerRegistry {
    * 重启服务器
    */
   async restart(name: string): Promise<void> {
+    await this.disableToolsInToolHub(name)
     await this.connectionManager.disconnect(name)
     await this.connectionManager.connect(this.configs.get(name)!)
+    await this.syncServerTools(name)
   }
 
   /**
@@ -177,6 +201,112 @@ export class MCPServerRegistry {
   }
 
   // =========================================================================
+  // ToolHub 同步
+  // =========================================================================
+
+  /**
+   * 将服务器工具同步到 ToolHub
+   */
+  async syncServerTools(serverName: string): Promise<Tool[]> {
+    if (!this.syncToToolHub) {
+      return []
+    }
+
+    const server = this.connectionManager.get(serverName)
+    if (!server || server.status !== 'connected') {
+      throw mcpServerNotFound(serverName)
+    }
+
+    // 映射工具
+    const result = await this.toolMapper.mapMany(server.tools, serverName)
+    const mappedTools = result.tools
+
+    // 注册到 ToolHub
+    for (const tool of mappedTools) {
+      try {
+        await this.syncToToolHub.register(tool)
+      } catch (error) {
+        // 工具已存在，尝试更新
+        const existing = await this.syncToToolHub.get(tool.id)
+        if (existing) {
+          await this.syncToToolHub.unregister(tool.id)
+          await this.syncToToolHub.register(tool)
+        }
+      }
+    }
+
+    // 触发回调
+    this.onToolsChanged?.(serverName, mappedTools)
+
+    return mappedTools
+  }
+
+  /**
+   * 从 ToolHub 移除服务器工具
+   */
+  async removeToolsFromToolHub(serverName: string): Promise<void> {
+    if (!this.syncToToolHub) {
+      return
+    }
+
+    // 获取当前工具
+    const server = this.connectionManager.get(serverName)
+    if (!server) return
+
+    // 映射工具 ID
+    for (const mcpTool of server.tools) {
+      const toolId = this.toolMapper.map(mcpTool, serverName).id
+      try {
+        await this.syncToToolHub.unregister(toolId)
+      } catch {
+        // 忽略不存在的错误
+      }
+    }
+  }
+
+  /**
+   * 禁用服务器工具（在 ToolHub 中标记为不可用）
+   */
+  async disableToolsInToolHub(serverName: string): Promise<void> {
+    if (!this.syncToToolHub) {
+      return
+    }
+
+    const server = this.connectionManager.get(serverName)
+    if (!server) return
+
+    // 映射工具 ID 并禁用
+    for (const mcpTool of server.tools) {
+      const toolId = this.toolMapper.map(mcpTool, serverName).id
+      try {
+        this.syncToToolHub.disable(toolId)
+      } catch {
+        // 忽略
+      }
+    }
+  }
+
+  /**
+   * 同步所有服务器工具到 ToolHub
+   */
+  async syncAllToolsToToolHub(): Promise<Map<string, Tool[]>> {
+    const results = new Map<string, Tool[]>()
+
+    for (const config of this.configs.values()) {
+      try {
+        if (this.connectionManager.isConnected(config.name)) {
+          const tools = await this.syncServerTools(config.name)
+          results.set(config.name, tools)
+        }
+      } catch (error) {
+        console.error(`[MCPServerRegistry] Sync failed for ${config.name}:`, error)
+      }
+    }
+
+    return results
+  }
+
+  // =========================================================================
   // 健康检查
   // =========================================================================
 
@@ -200,7 +330,6 @@ export class MCPServerRegistry {
       }
     }
 
-    // 简化：检查 uptime
     if (!server.uptime || server.uptime < 0) {
       return {
         healthy: false,
@@ -210,7 +339,7 @@ export class MCPServerRegistry {
 
     return {
       healthy: true,
-      latencyMs: server.uptime * 1000, // 简化：用 uptime 模拟延迟
+      latencyMs: server.uptime * 1000,
     }
   }
 
@@ -238,6 +367,7 @@ export class MCPServerRegistry {
     for (const config of this.configs.values()) {
       try {
         await this.connectionManager.connect(config)
+        await this.syncServerTools(config.name)
       } catch (error) {
         console.error(`[MCPServerRegistry] Failed to start ${config.name}:`, error)
       }
@@ -248,6 +378,11 @@ export class MCPServerRegistry {
    * 停止所有服务器
    */
   async stopAll(): Promise<void> {
+    // 禁用所有工具
+    for (const config of this.configs.values()) {
+      await this.disableToolsInToolHub(config.name)
+    }
+
     await this.connectionManager.shutdown()
   }
 }
