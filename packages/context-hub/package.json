@@ -2,7 +2,26 @@
   "name": "@openclaw/suite-context-hub",
   "version": "0.1.0",
   "type": "module",
+  "description": "Context compression and diminishing returns detection for OpenClaw Suite",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./detector": "./dist/detector/DiminishingReturnsDetector.js",
+    "./compact": "./dist/compact/strategies.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
