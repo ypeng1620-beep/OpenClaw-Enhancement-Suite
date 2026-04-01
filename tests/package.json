@@ -1,0 +1,18 @@
+{
+  "name": "@openclaw/suite-tests",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Standalone integration tests for OpenClaw Enhancement Suite",
+  "scripts": {
+    "test:full": "npm run build && npx tsx tests/integration/mcp-toolhub-coordinator-context.test.ts",
+    "test": "npx tsx tests/integration/mcp-toolhub-coordinator-context.test.ts"
+  },
+  "dependencies": {
+    "@openclaw/suite-core": "workspace:*",
+    "@openclaw/suite-tool-hub": "workspace:*",
+    "@openclaw/suite-permission-hub": "workspace:*",
+    "@openclaw/suite-context-hub": "workspace:*",
+    "@openclaw/suite-mcp-hub": "workspace:*",
+    "@openclaw/suite-coordinator-hub": "workspace:*"
+  }
+}
