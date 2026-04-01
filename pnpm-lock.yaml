@@ -81,6 +81,31 @@ importers:
         specifier: ^20.0.0
         version: 20.19.37
 
+  packages/openclaw-integration:
+    dependencies:
+      '@openclaw/suite-context-hub':
+        specifier: workspace:*
+        version: link:../context-hub
+      '@openclaw/suite-coordinator-hub':
+        specifier: workspace:*
+        version: link:../coordinator-hub
+      '@openclaw/suite-core':
+        specifier: workspace:*
+        version: link:../core
+      '@openclaw/suite-mcp-hub':
+        specifier: workspace:*
+        version: link:../mcp-hub
+      '@openclaw/suite-permission-hub':
+        specifier: workspace:*
+        version: link:../permission-hub
+      '@openclaw/suite-tool-hub':
+        specifier: workspace:*
+        version: link:../tool-hub
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.37
+
   packages/permission-hub:
     dependencies:
       '@openclaw/suite-core':
