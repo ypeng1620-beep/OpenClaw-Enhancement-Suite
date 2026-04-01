@@ -12,28 +12,26 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   ToolRegistry,
   ToolExecutor,
+} from '@openclaw/suite-tool-hub'
+import {
   PermissionEngine,
   FileRuleStore,
   PermissionChecker,
-  MemoryToolContextStore,
-} from '@openclaw/suite-tool-hub'
+} from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
 
 describe('ToolHub + PermissionHub 集成', () => {
   let toolRegistry: ToolRegistry
   let executor: ToolExecutor
   let ruleStore: FileRuleStore
-  let permissionEngine: PermissionEngine
   let checker: PermissionChecker
   let guard: PermissionGuard
 
   beforeEach(() => {
     toolRegistry = new ToolRegistry()
-    executor = new ToolExecutor({ registry: toolRegistry })
+    executor = new ToolExecutor()
     ruleStore = new FileRuleStore('/tmp/test-rules.json')
-    permissionEngine = new PermissionEngine({ store: ruleStore })
-    const contextStore = new MemoryToolContextStore()
-    checker = new PermissionChecker({ engine: permissionEngine, contextStore })
+    checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
   })
 

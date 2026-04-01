@@ -4,6 +4,7 @@
 
 // Registry
 export { DefaultToolRegistry, type ToolRegistryOptions } from './registry/ToolRegistry.js'
+export { DefaultToolRegistry as ToolRegistry } from './registry/ToolRegistry.js'
 
 // Executor
 export { ToolExecutor, type ToolExecutorOptions } from './executor/ToolExecutor.js'

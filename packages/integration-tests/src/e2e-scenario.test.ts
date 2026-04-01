@@ -15,11 +15,11 @@ import { TaskManager } from '@openclaw/suite-coordinator-hub'
 import {
   ToolRegistry,
   ToolExecutor,
-  PermissionEngine,
+} from '@openclaw/suite-tool-hub'
+import {
   FileRuleStore,
   PermissionChecker,
-  MemoryToolContextStore,
-} from '@openclaw/suite-tool-hub'
+} from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
 import {
   ContextManager,
@@ -36,7 +36,7 @@ describe('端到端完整场景', () => {
   let guard: PermissionGuard
   let contextManager: ContextManager
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // 1. 初始化 TaskManager
     taskManager = new TaskManager({
       parentCompletionStrategy: 'all_success',
@@ -48,9 +48,7 @@ describe('端到端完整场景', () => {
     // 2. 初始化 ToolHub
     toolRegistry = new ToolRegistry()
     const ruleStore = new FileRuleStore('/tmp/e2e-rules.json')
-    const permissionEngine = new PermissionEngine({ store: ruleStore })
-    const contextStore = new MemoryToolContextStore()
-    const checker = new PermissionChecker({ engine: permissionEngine, contextStore })
+    const checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
 
     // 3. 初始化 ContextHub
@@ -64,8 +62,6 @@ describe('端到端完整场景', () => {
 
     // 4. 初始化 Executor
     executor = new ToolExecutor({
-      registry: toolRegistry,
-      contextStore,
       onBeforeExecute: async (tool, input) => {
         contextManager.addEvent({
           type: 'tool_call',

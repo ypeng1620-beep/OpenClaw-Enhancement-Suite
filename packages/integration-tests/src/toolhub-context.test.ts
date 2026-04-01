@@ -12,7 +12,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   ToolRegistry,
   ToolExecutor,
-  MemoryToolContextStore,
 } from '@openclaw/suite-tool-hub'
 import {
   ContextManager,
@@ -24,13 +23,11 @@ import {
 describe('ToolHub + ContextHub 集成', () => {
   let toolRegistry: ToolRegistry
   let executor: ToolExecutor
-  let contextStore: MemoryToolContextStore
   let contextManager: ContextManager
   let detector: DiminishingReturnsDetector
 
   beforeEach(() => {
     toolRegistry = new ToolRegistry()
-    contextStore = new MemoryToolContextStore()
     contextManager = new ContextManager({
       maxEvents: 1000,
       compactionThreshold: 500,
@@ -62,8 +59,6 @@ describe('ToolHub + ContextHub 集成', () => {
 
     // 2. 创建执行器并连接 ContextManager
     executor = new ToolExecutor({
-      registry: toolRegistry,
-      contextStore,
       onBeforeExecute: async (tool, input) => {
         contextManager.addEvent({
           type: 'tool_call',

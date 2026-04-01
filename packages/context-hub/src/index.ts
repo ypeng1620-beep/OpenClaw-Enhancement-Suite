@@ -5,6 +5,9 @@
 // Context Manager
 export { ContextManager, type ContextManagerOptions } from './ContextManager.js'
 
+// Tool Context Store
+export { MemoryToolContextStore } from './MemoryToolContextStore.js'
+
 // Diminishing Returns Detector
 export {
   DiminishingReturnsDetector,

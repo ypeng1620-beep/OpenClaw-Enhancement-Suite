@@ -14,11 +14,11 @@ import { TaskManager } from '@openclaw/suite-coordinator-hub'
 import {
   ToolRegistry,
   ToolExecutor,
-  PermissionEngine,
+} from '@openclaw/suite-tool-hub'
+import {
   FileRuleStore,
   PermissionChecker,
-  MemoryToolContextStore,
-} from '@openclaw/suite-tool-hub'
+} from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
 
 describe('CoordinatorHub + PermissionHub 集成', () => {
@@ -37,11 +37,9 @@ describe('CoordinatorHub + PermissionHub 集成', () => {
 
     toolRegistry = new ToolRegistry()
     const ruleStore = new FileRuleStore('/tmp/test-coord-rules.json')
-    const permissionEngine = new PermissionEngine({ store: ruleStore })
-    const contextStore = new MemoryToolContextStore()
-    checker = new PermissionChecker({ engine: permissionEngine, contextStore })
+    checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
-    executor = new ToolExecutor({ registry: toolRegistry })
+    executor = new ToolExecutor()
   })
 
   afterEach(() => {
