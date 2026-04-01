@@ -43,6 +43,7 @@ export interface ToolResultEvent {
   readonly result?: unknown
   readonly error?: string
   readonly durationMs: number
+  readonly timestamp: number
 }
 
 /** 记忆事件 */

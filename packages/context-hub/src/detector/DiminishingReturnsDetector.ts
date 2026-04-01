@@ -21,7 +21,22 @@ export type DetectorEvent =
 /**
  * 检测器配置
  */
-export interface DetectorOptions extends DiminishingReturnsConfig {
+export interface DetectorOptions {
+  /** 滑动窗口大小 */
+  readonly windowSize?: number
+
+  /** 递减阈值 */
+  readonly threshold?: number
+
+  /** 停止阈值 */
+  readonly stopThreshold?: number
+
+  /** Token 上限 */
+  readonly tokenLimit?: number
+
+  /** 递减检测模式 */
+  readonly mode?: 'average' | 'latest' | 'slope'
+
   /** 是否在停止时自动通知 */
   autoNotify?: boolean
 

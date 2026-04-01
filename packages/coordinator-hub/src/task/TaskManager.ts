@@ -798,7 +798,7 @@ export class TaskManager {
   ): Promise<void> {
     const strategy = this.parentCompletionStrategy
 
-    if (strategy === 'fail_parent') {
+    if (strategy === 'all_success') {
       log(`Parent task ${parentTaskId} failing due to child ${childTaskId}`)
       await this.failTask(parentTaskId, `Child task failed: ${error}`, 'ignore_parent')
     }

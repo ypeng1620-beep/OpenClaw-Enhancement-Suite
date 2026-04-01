@@ -144,7 +144,7 @@ export interface MCPServer {
   readonly name: string
   readonly config: MCPServerConfig
   readonly status: MCPServerStatus
-  readonly tools: import('./tool.js').Tool[]
+  readonly tools: MCPTool[]
   readonly uptime?: number
   readonly error?: string
 }

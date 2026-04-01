@@ -181,7 +181,8 @@ export class MCPServerRegistry {
       throw mcpServerNotFound(name)
     }
 
-    return server.tools
+    const mapped = await this.toolMapper.mapMany(server.tools, name)
+    return mapped.tools
   }
 
   /**
@@ -193,7 +194,8 @@ export class MCPServerRegistry {
 
     for (const server of servers) {
       if (server.status === 'connected') {
-        result.set(server.name, server.tools)
+        const mapped = await this.toolMapper.mapMany(server.tools, server.name)
+        result.set(server.name, mapped.tools)
       }
     }
 

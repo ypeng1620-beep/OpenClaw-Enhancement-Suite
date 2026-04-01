@@ -11,7 +11,7 @@ import type {
   ToolContext,
   ToolResult,
 } from '@openclaw/suite-core'
-import type { ToolExecutor } from '../executor/ToolExecutor.js'
+import { ToolExecutor, type ToolExecutorOptions } from '../executor/ToolExecutor.js'
 
 /**
  * 工具注册表配置
@@ -43,7 +43,7 @@ export class DefaultToolRegistry implements ToolRegistry {
   constructor(options: ToolRegistryOptions = {}) {
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 30000
     this.executor = new ToolExecutor({
-      timeoutMs: this.defaultTimeoutMs,
+      defaultTimeoutMs: this.defaultTimeoutMs,
     })
   }
 

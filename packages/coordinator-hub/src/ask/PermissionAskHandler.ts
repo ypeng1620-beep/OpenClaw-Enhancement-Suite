@@ -206,12 +206,13 @@ export class PermissionAskHandler {
   ): {
     check: (request: PermissionRequest) => Promise<PermissionDecision>
   } {
+    const self = this
     return {
       async check(request: PermissionRequest): Promise<PermissionDecision> {
         const decision = await checker.check(request)
 
         if (decision.effect === 'ask') {
-          const confirmed = await this.requestConfirmation(
+          const confirmed = await self.requestConfirmation(
             request,
             decision.reason
           )
@@ -250,4 +251,13 @@ export function formatConfirmationMessage(
   }
 
   return message
+}
+
+/**
+ * 创建权限确认处理器（便捷函数）
+ */
+export function createPermissionAskHandler(
+  options?: PermissionAskHandlerOptions
+): PermissionAskHandler {
+  return new PermissionAskHandler(options)
 }

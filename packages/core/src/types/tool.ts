@@ -169,6 +169,8 @@ export interface ToolRegistry {
   list(filter?: ToolFilter): Promise<Tool[]>
   search(query: ToolSearchQuery): Promise<ToolSearchResult[]>
   execute(toolId: string, input: unknown, ctx: ToolContext): Promise<ToolResult>
+  disable(toolId: string): void
+  enable(toolId: string): void
 }
 
 // ============================================================================

@@ -80,7 +80,7 @@ export interface TaskPayload {
 // ============================================================================
 
 /** 任务类型 */
-export type TaskType = 'research' | 'implement' | 'verify' | 'general'
+export type TaskType = 'research' | 'implement' | 'verify' | 'general' | 'analysis' | 'other'
 
 /** 任务状态 */
 export type TaskStatus =
@@ -94,6 +94,7 @@ export type TaskStatus =
   | { state: 'failed'; error: string; failedAt: number }
   | { state: 'cancelled'; cancelledAt: number }
   | { state: 'timeout'; timedOutAt: number }
+  | { state: 'waiting_approval' }
 
 /** 获取任务状态的显示名称 */
 export function getTaskStatusName(status: TaskStatus): string {
@@ -110,6 +111,8 @@ export function getTaskStatusName(status: TaskStatus): string {
       return '已取消'
     case 'timeout':
       return '超时'
+    case 'waiting_approval':
+      return '等待确认'
   }
 }
 
@@ -118,7 +121,11 @@ export interface Task {
   readonly id: string
   readonly type: TaskType
   readonly description: string
-  readonly prompt: string
+  readonly prompt?: string
+  readonly tools?: string[]
+  readonly timeout?: number
+  readonly retryCount?: number
+  readonly maxRetries?: number
   readonly assignedAgent?: AgentId
   readonly status: TaskStatus
   readonly parentTaskId?: string
@@ -131,15 +138,14 @@ export interface Task {
 export function createTask(
   id: string,
   description: string,
-  prompt: string,
-  type: TaskType = 'general'
+  options?: { prompt?: string; type?: TaskType }
 ): Task {
   const now = Date.now()
   return {
     id,
-    type,
+    type: options?.type || 'general',
     description,
-    prompt,
+    prompt: options?.prompt,
     status: { state: 'pending' },
     createdAt: now,
     updatedAt: now,
@@ -149,7 +155,7 @@ export function createTask(
 /** 任务提交 */
 export interface TaskSubmission {
   readonly description: string
-  readonly prompt: string
+  readonly prompt?: string
   readonly type?: TaskType
   readonly tools?: string[]
   readonly timeout?: number

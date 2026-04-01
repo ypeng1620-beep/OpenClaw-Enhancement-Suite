@@ -34,11 +34,10 @@ export class RuleEngine {
   private readonly config: RuleEngineConfig
 
   constructor(config: RuleEngineConfig) {
-    this.config = {
-      defaultEffect: 'deny',
-      allowUnknown: false,
-      ...config,
-    }
+    this.config = Object.assign(
+      { defaultEffect: 'deny' as const, allowUnknown: false },
+      config
+    )
   }
 
   /**
@@ -83,8 +82,12 @@ export class RuleEngine {
 
     // 没有匹配规则，使用默认效果
     if (this.config.allowUnknown) {
+      if (this.config.defaultEffect === 'allow') {
+        return { effect: 'allow' }
+      }
       return {
-        effect: this.config.defaultEffect,
+        effect: 'deny',
+        reason: `Default deny (no matching rule found)`,
       }
     }
 

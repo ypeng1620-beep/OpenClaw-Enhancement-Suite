@@ -4,8 +4,7 @@
  * 管理 MCP 服务器的生命周期
  */
 
-import type { Tool } from '@openclaw/suite-core'
-import type { MCPServerConfig, MCPServerStatus } from '@openclaw/suite-core'
+import type { MCPTool, MCPServerConfig, MCPServerStatus } from '@openclaw/suite-core'
 
 /**
  * MCP 服务器
@@ -14,7 +13,7 @@ export interface MCPServer {
   readonly name: string
   readonly config: MCPServerConfig
   status: MCPServerStatus
-  tools: Tool[]
+  tools: MCPTool[]
   uptime?: number
   error?: string
 }

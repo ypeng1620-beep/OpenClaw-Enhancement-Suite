@@ -13,14 +13,14 @@ import type {
   PermissionContext,
 } from '@openclaw/suite-core'
 import { RuleEngine, type RuleEngineConfig } from './engine/RuleEngine.js'
-import { RuleStore, type RuleStoreOptions } from './store/RuleStore.js'
+import { MemoryRuleStore, type IRuleStore, type RuleStoreOptions } from './store/RuleStore.js'
 
 /**
  * 权限检查器配置
  */
 export interface PermissionCheckerOptions {
   /** 规则存储 */
-  store?: RuleStore
+  store?: IRuleStore
 
   /** 规则引擎配置 */
   engineConfig?: RuleEngineConfig
@@ -37,7 +37,7 @@ export interface PermissionCheckerOptions {
  */
 export class PermissionChecker implements IPermissionChecker {
   private readonly engine: RuleEngine
-  private readonly store: RuleStore
+  private readonly store: IRuleStore
   private cachedRules: PermissionRule[] = []
   private cacheVersion = ''
 
@@ -46,10 +46,7 @@ export class PermissionChecker implements IPermissionChecker {
     if (options.store) {
       this.store = options.store
     } else {
-      this.store = new RuleStore(options.storeConfig || {
-        source: 'memory',
-        initialRules: options.initialRules || [],
-      })
+      this.store = new MemoryRuleStore(options.initialRules || [])
     }
 
     // 初始化规则引擎
@@ -82,11 +79,15 @@ export class PermissionChecker implements IPermissionChecker {
     // 确保规则是最新的
     await this.refreshRulesIfNeeded()
 
-    return this.engine.check(request, this.cachedRules, {
-      ...request,
+    const context: PermissionContext = {
       sessionId: request.sessionId || '',
       userId: request.subject.userId || '',
-    } as PermissionContext)
+      agentId: (request.subject as any).agentId,
+      roles: [],
+      groups: [],
+    }
+
+    return this.engine.check(request, this.cachedRules, context)
   }
 
   /**

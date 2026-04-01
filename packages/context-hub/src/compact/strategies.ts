@@ -37,7 +37,12 @@ export class MicroCompactStrategy implements CompactStrategy {
         event.type === 'message' &&
         prev.role === event.role
       ) {
-        prev.content += '\n' + event.content
+        // 替换为合并后的消息（避免修改 readonly）
+        result.pop()
+        result.push({
+          ...prev,
+          content: prev.content + '\n' + event.content,
+        })
         continue
       }
 

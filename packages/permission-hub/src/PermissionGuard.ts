@@ -84,7 +84,7 @@ export class PermissionGuard {
     const decision = await this.checker.check({
       subject: {
         userId: context.userId,
-        agentId: context.agentId,
+        agentId: context.permissions.agentId,
       },
       object: {
         toolId,

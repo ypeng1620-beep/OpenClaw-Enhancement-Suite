@@ -212,8 +212,12 @@ export class ContextManager {
           event.type === 'message' &&
           prev.role === event.role
         ) {
-          // 合并
-          prev.content += '\n' + event.content
+          // 合并（替换以避免修改 readonly）
+          newEvents.pop()
+          newEvents.push({
+            ...prev,
+            content: prev.content + '\n' + event.content,
+          })
           compactedEventIds.push(event.id)
           continue
         }
@@ -222,12 +226,13 @@ export class ContextManager {
       // 截断长输出
       if (cfg.truncateLongOutputs) {
         if (event.type === 'tool_result' && event.result) {
+          const maxLen = cfg.maxOutputLength ?? 500
           const resultStr = JSON.stringify(event.result)
-          if (resultStr.length > cfg.maxOutputLength) {
+          if (resultStr.length > maxLen) {
             // 截断并标记
             newEvents.push({
               ...event,
-              result: '[TRUNCATED] ' + resultStr.slice(0, cfg.maxOutputLength),
+              result: '[TRUNCATED] ' + resultStr.slice(0, maxLen),
             })
             compactedEventIds.push(event.id)
             continue
@@ -283,16 +288,18 @@ export class ContextManager {
     const oldestEvent = this.events[0]
     const newestEvent = this.events[this.events.length - 1]
 
+    const getTimestamp = (e: ContextEvent) => (e as any).timestamp ?? 0
+
     return {
       eventCount: this.events.length,
       totalTokens: this.tokenCount,
       tokenLimit: this.options.maxTokens,
       usagePercent: this.tokenCount / this.options.maxTokens,
       oldestEventAge: oldestEvent
-        ? (now - oldestEvent.timestamp) / 1000
+        ? (now - getTimestamp(oldestEvent)) / 1000
         : undefined,
       newestEventAge: newestEvent
-        ? (now - newestEvent.timestamp) / 1000
+        ? (now - getTimestamp(newestEvent)) / 1000
         : undefined,
     }
   }
