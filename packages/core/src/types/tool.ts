@@ -214,12 +214,12 @@ export interface ToolDefOptions<TInput = unknown, TOutput = unknown> {
   inputSchema: JSONSchema
   outputSchema?: JSONSchema
   capabilities?: Partial<ToolCapabilities>
-  execute: (input: TInput, context: ToolContext) => Promise<ToolResult<TOutput>>
+  execute: (input: TInput, context: ToolContext) => Promise<ToolResult>
 }
 
 /** 带默认值的工具 */
 export interface BuiltTool<TInput = unknown, TOutput = unknown> extends Tool {
-  execute(input: TInput, context: ToolContext): Promise<ToolResult<TOutput>>
+  execute(input: TInput, context: ToolContext): Promise<ToolResult>
 }
 
 /** 工具构建器 */

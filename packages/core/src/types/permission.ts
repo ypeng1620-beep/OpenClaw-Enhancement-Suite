@@ -20,6 +20,7 @@ export type SubjectMatcher =
 
 /** 对象匹配器 */
 export type ObjectMatcher =
+  | { type: '*' }
   | { type: 'tool'; toolId: string }
   | { type: 'namespace'; namespace: string }
   | { type: 'tag'; tag: string }
