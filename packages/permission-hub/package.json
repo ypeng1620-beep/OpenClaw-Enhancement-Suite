@@ -2,7 +2,29 @@
   "name": "@openclaw/suite-permission-hub",
   "version": "0.1.0",
   "type": "module",
+  "description": "Permission rule engine for OpenClaw Suite",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./engine": "./dist/engine/RuleEngine.js",
+    "./store": "./dist/store/RuleStore.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
