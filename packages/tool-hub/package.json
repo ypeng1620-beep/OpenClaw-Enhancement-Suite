@@ -1,0 +1,29 @@
+{
+  "name": "@openclaw/suite-tool-hub",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tool registration and management hub for OpenClaw Suite",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./registry": "./dist/registry/ToolRegistry.js",
+    "./executor": "./dist/executor/ToolExecutor.js",
+    "./builtin": "./dist/builtin/index.js",
+    "./search": "./dist/search/SearchEngine.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "dependencies": {
+    "@openclaw/suite-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
