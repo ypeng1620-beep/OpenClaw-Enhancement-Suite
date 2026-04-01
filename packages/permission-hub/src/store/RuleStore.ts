@@ -5,8 +5,9 @@
  */
 
 import type { PermissionRule } from '@openclaw/suite-core'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile, stat } from 'fs/promises'
 import { existsSync } from 'fs'
+import { watch as fsWatch, type FSWatcher } from 'fs'
 
 /**
  * 规则存储配置
@@ -102,6 +103,8 @@ export class FileRuleStore implements IRuleStore {
   private watchers: Set<(rules: PermissionRule[]) => void> = new Set()
   private version = 0
   private readonly filePath: string
+  private fsWatcher?: FSWatcher
+  private lastModified = 0
 
   constructor(filePath: string, initialRules: PermissionRule[] = []) {
     this.filePath = filePath
@@ -110,10 +113,12 @@ export class FileRuleStore implements IRuleStore {
 
   async load(): Promise<void> {
     if (existsSync(this.filePath)) {
+      const stats = await stat(this.filePath)
       const content = await readFile(this.filePath, 'utf-8')
       try {
         this.rules = JSON.parse(content)
         this.version++
+        this.lastModified = stats.mtimeMs
       } catch (error) {
         console.error(`[FileRuleStore] Failed to parse rules: ${error}`)
       }
@@ -126,6 +131,39 @@ export class FileRuleStore implements IRuleStore {
       // 目录不存在，需要先创建（这里简化处理）
     }
     await writeFile(this.filePath, JSON.stringify(this.rules, null, 2), 'utf-8')
+    const stats = await stat(this.filePath)
+    this.lastModified = stats.mtimeMs
+  }
+
+  /**
+   * 启动文件系统监听（外部修改文件时自动重新加载）
+   */
+  startWatching(): void {
+    if (this.fsWatcher) return
+
+    this.fsWatcher = fsWatch(this.filePath, async (eventType) => {
+      if (eventType === 'change') {
+        try {
+          const stats = await stat(this.filePath)
+          if (stats.mtimeMs > this.lastModified) {
+            await this.load()
+            this.notifyWatchers()
+          }
+        } catch (error) {
+          console.error(`[FileRuleStore] Failed to reload rules: ${error}`)
+        }
+      }
+    })
+  }
+
+  /**
+   * 停止文件系统监听
+   */
+  stopWatching(): void {
+    if (this.fsWatcher) {
+      this.fsWatcher.close()
+      this.fsWatcher = undefined
+    }
   }
 
   async getRules(): Promise<PermissionRule[]> {
@@ -163,7 +201,15 @@ export class FileRuleStore implements IRuleStore {
 
   watch(callback: (rules: PermissionRule[]) => void): () => void {
     this.watchers.add(callback)
-    return () => this.watchers.delete(callback)
+    // 自动启动文件系统监听
+    this.startWatching()
+    return () => {
+      this.watchers.delete(callback)
+      // 如果没有监听者了，停止文件系统监听
+      if (this.watchers.size === 0) {
+        this.stopWatching()
+      }
+    }
   }
 
   getVersion(): string {

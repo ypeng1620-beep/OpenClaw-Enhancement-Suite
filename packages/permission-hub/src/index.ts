@@ -39,3 +39,15 @@ export type {
   ObjectMatcher,
   ActionMatcher,
 } from '@openclaw/suite-core'
+
+// Errors
+export {
+  PERMISSION_ERROR_CODES,
+  permissionDenied,
+  ruleNotFound,
+  ruleAlreadyExists,
+  ruleValidationFailed,
+  storeLoadFailed,
+  storeSaveFailed,
+  contextMissingField,
+} from './errors.js'

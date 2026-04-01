@@ -923,6 +923,37 @@ function checkCompatibility(local: VersionInfo, remote: VersionInfo): boolean {
 | `AgentMessage` | core | ✅ 定义完成 | `packages/core/src/types/agent.ts` |
 | `Coordinator` | core | ✅ 定义完成 | `packages/core/src/types/agent.ts` |
 | `TaskStore` | core | ✅ 新增 | `docs/api-standards.md` |
+
+### ask 效果集成协议
+
+当权限检查返回 `ask` 时，需要上层协调器处理用户确认：
+
+```typescript
+// 权限检查返回 ask
+const decision = await checker.check(request)
+
+if (decision.effect === 'ask') {
+  // 1. 暂停工具执行
+  // 2. 通知上层协调器（如 CoordinatorHub）
+  // 3. 协调器向用户展示确认对话框
+  // 4. 用户确认后，继续执行
+  // 5. 用户拒绝后，返回权限拒绝结果
+
+  // 示例流程（由 CoordinatorHub 实现）
+  const confirmed = await coordinator.promptUser({
+    message: `是否允许执行 ${request.object.toolId}？`,
+    reason: decision.reason,
+  })
+
+  if (confirmed) {
+    // 继续执行
+  } else {
+    // 返回拒绝
+  }
+}
+```
+
+> 注意：ToolHub 和 PermissionHub 不直接处理用户交互，该逻辑由 CoordinatorHub 统一负责。
 | `OpenClawSuite` | core | ✅ 定义完成 | `packages/core/src/index.ts` |
 
 > 状态说明：✅ 定义完成 = 接口已锁定，开始写实现  
