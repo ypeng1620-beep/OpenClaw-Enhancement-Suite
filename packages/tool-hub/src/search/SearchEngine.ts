@@ -19,12 +19,18 @@ export interface SearchEngineOptions {
 
   /** 是否启用同义词扩展 */
   enableSynonymExpansion?: boolean
+
+  /** 自定义同义词表（会与默认表合并） */
+  synonyms?: Record<string, string[]>
+
+  /** 完全替换同义词表（不与默认合并） */
+  replaceSynonyms?: Record<string, string[]>
 }
 
 /**
- * 同义词表
+ * 默认同义词表
  */
-const SYNONYMS: Record<string, string[]> = {
+const DEFAULT_SYNONYMS: Record<string, string[]> = {
   file: ['document', 'fs', 'filesystem'],
   read: ['cat', 'view', 'show', 'display'],
   write: ['create', 'edit', 'modify', 'save'],
@@ -59,10 +65,23 @@ function sortResults(results: ToolSearchResult[]): ToolSearchResult[] {
 export class SearchEngine {
   private readonly fuzzyThreshold: number
   private readonly enableSynonymExpansion: boolean
+  private readonly synonyms: Record<string, string[]>
 
   constructor(options: SearchEngineOptions = {}) {
     this.fuzzyThreshold = options.fuzzyThreshold ?? 0.6
     this.enableSynonymExpansion = options.enableSynonymExpansion ?? true
+
+    // 合并同义词表
+    if (options.replaceSynonyms) {
+      this.synonyms = options.replaceSynonyms
+    } else {
+      this.synonyms = { ...DEFAULT_SYNONYMS }
+      if (options.synonyms) {
+        for (const [key, values] of Object.entries(options.synonyms)) {
+          this.synonyms[key] = [...(this.synonyms[key] || []), ...values]
+        }
+      }
+    }
   }
 
   /**
@@ -105,7 +124,7 @@ export class SearchEngine {
 
     for (const term of terms) {
       // 添加同义词
-      const synonyms = SYNONYMS[term]
+      const synonyms = this.synonyms[term]
       if (synonyms) {
         for (const syn of synonyms) {
           expanded.add(syn)
@@ -113,7 +132,7 @@ export class SearchEngine {
       }
 
       // 反向查找（如果某个词是某个词的同义词，也加入）
-      for (const [key, values] of Object.entries(SYNONYMS)) {
+      for (const [key, values] of Object.entries(this.synonyms)) {
         if (values.includes(term)) {
           expanded.add(key)
         }

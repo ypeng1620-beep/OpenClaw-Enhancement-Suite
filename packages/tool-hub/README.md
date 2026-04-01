@@ -4,7 +4,7 @@
 
 ## 状态
 
-✅ Phase 1 实现中
+✅ Phase 1 完成
 
 ## 功能
 
@@ -16,7 +16,7 @@
 
 ### 工具执行器 (ToolExecutor)
 - 完整生命周期钩子（beforeExecute / afterExecute / onError）
-- 执行超时控制
+- 执行超时控制 + 超时警告日志
 - 全局钩子注入
 
 ### 内置工具 (Built-in)
@@ -25,9 +25,14 @@
 
 ### 搜索 (SearchEngine)
 - 关键词匹配
-- 同义词扩展
+- **可注入同义词表**
 - 模糊匹配
 - 多字段评分
+
+### 路径解析器
+- **可配置基础目录**
+- 绝对路径控制
+- 路径遍历 (..) 控制
 
 ## 使用示例
 
@@ -35,29 +40,37 @@
 import {
   DefaultToolRegistry,
   getAllBuiltinTools,
-  createTool,
+  configurePathResolver,
 } from '@openclaw/suite-tool-hub'
 import { createPermissionContext } from '@openclaw/suite-core'
 
 async function main() {
-  // 1. 创建注册表
+  // 1. 配置路径解析器（可选）
+  configurePathResolver({
+    defaultBaseDir: '/safe/workspace',
+    allowTraversal: false,
+  })
+
+  // 2. 创建注册表
   const registry = new DefaultToolRegistry({
     defaultTimeoutMs: 30000,
   })
 
-  // 2. 注册内置工具
+  // 3. 注册内置工具
   await registry.registerMany(getAllBuiltinTools())
 
-  // 3. 注册自定义工具
+  // 4. 注册自定义工具
   await registry.register(myCustomTool)
 
-  // 4. 搜索工具
-  const results = await registry.search({
-    query: 'read file',
-    limit: 5,
+  // 5. 搜索工具（支持同义词）
+  const engine = new SearchEngine({
+    synonyms: { stock: ['股票', 'quote'] }
+  })
+  const results = engine.search(await registry.list(), {
+    query: 'stock',
   })
 
-  // 5. 执行工具
+  // 6. 执行工具
   const ctx = createPermissionContext('session-1', 'user-1')
   const result = await registry.execute('filesystem/read', {
     path: '/path/to/file.txt',
@@ -104,3 +117,9 @@ const executor = new ToolExecutor({
 | `filesystem/info` | File Info | 获取文件信息 | 只读、文件系统 |
 | `network/http_get` | HTTP GET | GET 请求 | 只读、网络 |
 | `network/http_post` | HTTP POST | POST 请求 | 可写、网络 |
+
+## 演示
+
+```bash
+npm run demo
+```

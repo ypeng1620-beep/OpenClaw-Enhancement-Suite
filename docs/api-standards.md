@@ -911,6 +911,13 @@ function checkCompatibility(local: VersionInfo, remote: VersionInfo): boolean {
 | `ContextEvent` | core | ✅ 定义完成 | `packages/core/src/types/context.ts` |
 | `ContextManager` | core | ✅ 定义完成 | `packages/core/src/types/context.ts` |
 | `DiminishingReturnsDetector` | core | ✅ 已增强 | `packages/core/src/types/context.ts` |
+
+### 未来增强点（v0.2）
+
+| 增强项 | 说明 | 优先级 |
+|--------|------|--------|
+| `ToolContext.signal` | 支持 AbortSignal，工具可感知取消 | 中 |
+| 工具执行超时后清理 | 部分工具（文件 I/O）无法响应取消，需后续处理 | 低 |
 | `MCPToolMapper` | core | ✅ 已增强 | `packages/core/src/types/mcp.ts` |
 | `MapManyOptions` | core | ✅ 新增 | `docs/api-standards.md` |
 | `AgentMessage` | core | ✅ 定义完成 | `packages/core/src/types/agent.ts` |

@@ -10,12 +10,18 @@
     "./registry": "./dist/registry/ToolRegistry.js",
     "./executor": "./dist/executor/ToolExecutor.js",
     "./builtin": "./dist/builtin/index.js",
+    "./builtin/pathResolver": "./dist/builtin/pathResolver.js",
     "./search": "./dist/search/SearchEngine.js"
   },
+  "files": [
+    "dist",
+    "examples"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "demo": "npx tsx examples/demo.ts"
   },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"

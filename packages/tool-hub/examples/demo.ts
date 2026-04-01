@@ -1,13 +1,13 @@
 /**
  * ToolHub 使用示例
  *
- * 运行方式: npx tsx src/demo.ts
+ * 运行方式: npx tsx examples/demo.ts
  */
 
-import { DefaultToolRegistry } from './registry/ToolRegistry.js'
-import { ToolExecutor } from './executor/ToolExecutor.js'
-import { getAllBuiltinTools } from './builtin/index.js'
-import { SearchEngine } from './search/SearchEngine.js'
+import { DefaultToolRegistry } from '../src/registry/ToolRegistry.js'
+import { getAllBuiltinTools } from '../src/builtin/index.js'
+import { SearchEngine } from '../src/search/SearchEngine.js'
+import { configurePathResolver } from '../src/builtin/pathResolver.js'
 import {
   createPermissionContext,
   buildTool,

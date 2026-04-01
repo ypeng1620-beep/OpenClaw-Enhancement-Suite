@@ -3,14 +3,34 @@
  */
 
 import { readFile, writeFile, stat, readdir } from 'fs/promises'
-import { join, basename, dirname } from 'path'
+import { basename, dirname } from 'path'
 import type {
   Tool,
   ToolContext,
   ToolResult,
-  JSONSchema,
 } from '@openclaw/suite-core'
 import { buildTool } from '@openclaw/suite-core'
+import { createPathResolver, type PathResolverConfig } from './pathResolver.js'
+
+// ============================================================================
+// 路径解析器
+// ============================================================================
+
+let currentResolvePath = createPathResolver()
+
+/**
+ * 配置全局路径解析器
+ */
+export function configurePathResolver(config: Partial<PathResolverConfig>): void {
+  currentResolvePath = createPathResolver(config)
+}
+
+/**
+ * 设置路径解析器（供测试用）
+ */
+export function _setPathResolver(fn: typeof currentResolvePath): void {
+  currentResolvePath = fn
+}
 
 // ============================================================================
 // 辅助函数
@@ -41,16 +61,6 @@ function createErrorResult(
   }
 }
 
-async function resolvePath(path: string, workspace?: string): Promise<string> {
-  if (path.startsWith('/') || path.match(/^[A-Za-z]:/)) {
-    return path
-  }
-  if (workspace) {
-    return join(workspace, path)
-  }
-  return path
-}
-
 // ============================================================================
 // 工具定义
 // ============================================================================
@@ -68,19 +78,9 @@ export const readFileTool: Tool = buildTool({
   inputSchema: {
     type: 'object',
     properties: {
-      path: {
-        type: 'string',
-        description: 'Path to the file to read',
-      },
-      encoding: {
-        type: 'string',
-        description: 'File encoding',
-        default: 'utf-8',
-      },
-      maxBytes: {
-        type: 'number',
-        description: 'Maximum bytes to read',
-      },
+      path: { type: 'string', description: 'Path to the file to read' },
+      encoding: { type: 'string', description: 'File encoding', default: 'utf-8' },
+      maxBytes: { type: 'number', description: 'Maximum bytes to read' },
     },
     required: ['path'],
   },
@@ -101,25 +101,14 @@ export const readFileTool: Tool = buildTool({
     }
 
     try {
-      const resolvedPath = await resolvePath(path, context.workspace)
-
-      // 安全检查：防止路径遍历
-      if (resolvedPath.includes('..')) {
-        return createErrorResult(
-          this.id,
-          Date.now() - start,
-          'SECURITY_ERROR',
-          'Path traversal not allowed'
-        )
-      }
-
+      const resolvedPath = await currentResolvePath(path, context.workspace)
       let content: string | Buffer = await readFile(resolvedPath)
 
-      // 截断
       if (maxBytes && content.length > maxBytes) {
         content = content.slice(0, maxBytes)
         return {
-          ...createSuccessResult(this.id, content.toString(), Date.now() - start),
+          success: true,
+          data: content.toString(),
           truncated: true,
           metadata: {
             toolId: this.id,
@@ -127,14 +116,10 @@ export const readFileTool: Tool = buildTool({
             truncated: true,
             originalSize: content.length,
           },
-        } as ToolResult & { truncated: boolean }
+        } as unknown as ToolResult
       }
 
-      return createSuccessResult(
-        this.id,
-        content.toString(),
-        Date.now() - start
-      )
+      return createSuccessResult(this.id, content.toString(), Date.now() - start)
     } catch (error) {
       return createErrorResult(
         this.id,
@@ -159,26 +144,16 @@ export const writeFileTool: Tool = buildTool({
   inputSchema: {
     type: 'object',
     properties: {
-      path: {
-        type: 'string',
-        description: 'Path to the file to write',
-      },
-      content: {
-        type: 'string',
-        description: 'Content to write',
-      },
-      encoding: {
-        type: 'string',
-        description: 'File encoding',
-        default: 'utf-8',
-      },
+      path: { type: 'string', description: 'Path to the file to write' },
+      content: { type: 'string', description: 'Content to write' },
+      encoding: { type: 'string', description: 'File encoding', default: 'utf-8' },
     },
     required: ['path', 'content'],
   },
   capabilities: {
     readOnly: false,
     filesystemAccess: true,
-    dangerous: true, // 可以覆盖文件
+    dangerous: true,
     networkAccess: false,
     longRunning: false,
     streaming: false,
@@ -192,20 +167,8 @@ export const writeFileTool: Tool = buildTool({
     }
 
     try {
-      const resolvedPath = await resolvePath(path, context.workspace)
-
-      // 安全检查：防止路径遍历
-      if (resolvedPath.includes('..')) {
-        return createErrorResult(
-          this.id,
-          Date.now() - start,
-          'SECURITY_ERROR',
-          'Path traversal not allowed'
-        )
-      }
-
+      const resolvedPath = await currentResolvePath(path, context.workspace)
       await writeFile(resolvedPath, content, encoding as BufferEncoding)
-
       return createSuccessResult(this.id, { path, written: content.length }, Date.now() - start)
     } catch (error) {
       return createErrorResult(
@@ -231,10 +194,7 @@ export const listDirTool: Tool = buildTool({
   inputSchema: {
     type: 'object',
     properties: {
-      path: {
-        type: 'string',
-        description: 'Path to the directory',
-      },
+      path: { type: 'string', description: 'Path to the directory' },
     },
     required: ['path'],
   },
@@ -251,35 +211,19 @@ export const listDirTool: Tool = buildTool({
     const { path } = input as { path: string }
 
     try {
-      const resolvedPath = await resolvePath(path, context.workspace)
-
-      // 安全检查
-      if (resolvedPath.includes('..')) {
-        return createErrorResult(
-          this.id,
-          Date.now() - start,
-          'SECURITY_ERROR',
-          'Path traversal not allowed'
-        )
-      }
-
+      const resolvedPath = await currentResolvePath(path, context.workspace)
       const entries = await readdir(resolvedPath)
       const results = await Promise.all(
         entries.map(async (name) => {
           try {
-            const entryPath = join(resolvedPath, name)
+            const entryPath = `${resolvedPath}/${name}`
             const stats = await stat(entryPath)
-            return {
-              name,
-              type: stats.isDirectory() ? 'directory' : 'file',
-              size: stats.size,
-            }
+            return { name, type: stats.isDirectory() ? 'directory' : 'file', size: stats.size }
           } catch {
             return { name, type: 'unknown', size: 0 }
           }
         })
       )
-
       return createSuccessResult(this.id, results, Date.now() - start)
     } catch (error) {
       return createErrorResult(
@@ -305,10 +249,7 @@ export const fileInfoTool: Tool = buildTool({
   inputSchema: {
     type: 'object',
     properties: {
-      path: {
-        type: 'string',
-        description: 'Path to the file or directory',
-      },
+      path: { type: 'string', description: 'Path to the file or directory' },
     },
     required: ['path'],
   },
@@ -325,17 +266,7 @@ export const fileInfoTool: Tool = buildTool({
     const { path } = input as { path: string }
 
     try {
-      const resolvedPath = await resolvePath(path, context.workspace)
-
-      if (resolvedPath.includes('..')) {
-        return createErrorResult(
-          this.id,
-          Date.now() - start,
-          'SECURITY_ERROR',
-          'Path traversal not allowed'
-        )
-      }
-
+      const resolvedPath = await currentResolvePath(path, context.workspace)
       const stats = await stat(resolvedPath)
 
       return createSuccessResult(
@@ -349,8 +280,6 @@ export const fileInfoTool: Tool = buildTool({
           created: stats.birthtime,
           modified: stats.mtime,
           accessed: stats.atime,
-          isFile: stats.isFile(),
-          isDirectory: stats.isDirectory(),
         },
         Date.now() - start
       )

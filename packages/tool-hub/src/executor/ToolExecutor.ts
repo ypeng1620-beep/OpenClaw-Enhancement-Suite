@@ -214,15 +214,28 @@ export class ToolExecutor {
     context: ToolContext,
     timeoutMs: number
   ): Promise<ToolResult> {
+    let timeoutHandle: NodeJS.Timeout
+
     return Promise.race([
       tool.execute(input, context),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new TimeoutError(tool.id, timeoutMs)),
-          timeoutMs
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new TimeoutError(tool.id, timeoutMs))
+        }, timeoutMs)
+      }),
+    ]).finally(() => {
+      clearTimeout(timeoutHandle)
+    }).catch((error) => {
+      // 如果超时发生，记录警告
+      // 注意：部分工具（如文件 I/O）可能仍在后台运行
+      if (error instanceof TimeoutError) {
+        console.warn(
+          `[ToolExecutor] ⚠️ Timeout after ${error.durationMs}ms for tool ${error.toolId}. ` +
+          `Background cleanup may be needed.`
         )
-      ),
-    ])
+      }
+      throw error
+    })
   }
 
   // =========================================================================
