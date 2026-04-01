@@ -1,0 +1,23 @@
+{
+  "name": "@openclaw/suite-integration-tests",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Integration tests for OpenClaw Enhancement Suite",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@openclaw/suite-core": "workspace:*",
+    "@openclaw/suite-tool-hub": "workspace:*",
+    "@openclaw/suite-permission-hub": "workspace:*",
+    "@openclaw/suite-context-hub": "workspace:*",
+    "@openclaw/suite-mcp-hub": "workspace:*",
+    "@openclaw/suite-coordinator-hub": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "vitest": "^1.0.0"
+  }
+}

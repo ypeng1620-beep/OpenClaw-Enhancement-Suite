@@ -17,6 +17,8 @@
 │   packages/mcp-hub       ── MCP 服务器集成                   │
 │   packages/coordinator-hub── 多Agent协调中心                  │
 │                                                             │
+│   packages/integration-tests ── Phase 6 集成测试              │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -24,23 +26,34 @@
 
 | 包 | 状态 | 说明 |
 |---|------|------|
-| `core` | 🔨 设计中 | 共享类型定义、接口标准 |
-| `tool-hub` | 🔨 设计中 | 工具注册、发现、安装 |
-| `permission-hub` | 🔨 设计中 | 细粒度权限规则 |
-| `context-hub` | 🔨 设计中 | 上下文压缩、递减检测 |
-| `mcp-hub` | 🔨 设计中 | MCP → Tool 映射 |
-| `coordinator-hub` | 🔨 设计中 | 多Agent任务协调 |
+| `core` | ✅ 完成 | 共享类型定义、接口标准 (~30KB) |
+| `tool-hub` | ✅ Phase 1 | 工具注册、发现、生命周期钩子 |
+| `permission-hub` | ✅ Phase 2 | 规则引擎、FileRuleStore 热更新 |
+| `context-hub` | ✅ Phase 3 | 上下文压缩、递减检测、三层策略 |
+| `mcp-hub` | ✅ Phase 4 | MCP 服务器管理、ToolHub 自动同步 |
+| `coordinator-hub` | ✅ Phase 5 | 任务管理、父子策略、ask 效果集成 |
+| `integration-tests` | ✅ Phase 6 | 5 大集成测试场景、E2E 完整流程 |
 
 ## 开发进度
 
-- [ ] Day 1-2: 接口标准设计 (`docs/api-standards.md`)
-- [ ] Day 3: TypeScript 类型定义 (`packages/core`)
-- [ ] Phase 1: ToolHub
-- [ ] Phase 2: PermissionHub
-- [ ] Phase 3: ContextHub
-- [ ] Phase 4: MCP Hub
-- [ ] Phase 5: CoordinatorHub
-- [ ] Phase 6: 集成测试
+- [x] Day 1-2: 接口标准设计 (`docs/api-standards.md`)
+- [x] Day 3: TypeScript 类型定义 (`packages/core`)
+- [x] Phase 1: ToolHub
+- [x] Phase 2: PermissionHub
+- [x] Phase 3: ContextHub
+- [x] Phase 4: MCP Hub
+- [x] Phase 5: CoordinatorHub
+- [x] **Phase 6: 集成测试** ← 当前
+
+## Phase 6 集成测试场景
+
+| 测试文件 | 集成模块 | 场景 |
+|---------|---------|------|
+| `toolhub-permission.test.ts` | ToolHub ↔ PermissionHub | 工具注册→权限检查→执行拦截 |
+| `toolhub-context.test.ts` | ToolHub ↔ ContextHub | 工具执行→事件记录→递减检测 |
+| `mcphub-toolhub.test.ts` | MCPHub ↔ ToolHub | MCP 工具映射→ToolRegistry 同步 |
+| `coordinator-permission.test.ts` | CoordinatorHub ↔ PermissionHub | 任务→权限检查→ask 暂停→恢复 |
+| `e2e-scenario.test.ts` | 全部模块 | 股票研究任务完整流程 |
 
 ## 设计原则
 
