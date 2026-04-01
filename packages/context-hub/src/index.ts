@@ -22,6 +22,13 @@ export {
   ManualCompactStrategy,
 } from './compact/strategies.js'
 
+// Integration
+export {
+  createToolContextAdapter,
+  createSimpleToolMiddleware,
+  type ToolContextAdapterOptions,
+} from './integration/ToolContextAdapter.js'
+
 // Re-export core types
 export type {
   ContextEvent,
@@ -36,3 +43,13 @@ export type {
   DiminishingReturnsConfig,
   DiminishingReturnsDecision,
 } from '@openclaw/suite-core'
+
+// Errors
+export {
+  CONTEXT_ERROR_CODES,
+  contextTokenLimit,
+  contextCompactFailed,
+  detectorConfigInvalid,
+  eventTypeInvalid,
+  eventPayloadTooLarge,
+} from './errors.js'

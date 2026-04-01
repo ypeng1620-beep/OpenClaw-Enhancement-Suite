@@ -13,6 +13,16 @@ import type {
 } from '@openclaw/suite-core'
 
 /**
+ * 上下文管理器事件
+ */
+export type ContextManagerEvent =
+  | { type: 'event_added'; event: ContextEvent }
+  | { type: 'compact_start'; strategy: 'micro' | 'auto' | 'manual' }
+  | { type: 'compact_complete'; result: CompactResult }
+  | { type: 'threshold_reached'; usagePercent: number }
+  | { type: 'cleared' }
+
+/**
  * 上下文管理器配置
  */
 export interface ContextManagerOptions {
@@ -54,9 +64,29 @@ export class ContextManager {
   private readonly options: Required<ContextManagerOptions>
   private readonly events: ContextEvent[] = []
   private tokenCount = 0
+  private readonly listeners: Set<(event: ContextManagerEvent) => void> = new Set()
 
   constructor(options: ContextManagerOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
+  }
+
+  // =========================================================================
+  // 事件通知
+  // =========================================================================
+
+  /**
+   * 订阅事件
+   */
+  on(handler: (event: ContextManagerEvent) => void): () => void {
+    this.listeners.add(handler)
+    return () => this.listeners.delete(handler)
+  }
+
+  /**
+   * 发出事件
+   */
+  private emit(event: ContextManagerEvent): void {
+    this.listeners.forEach((handler) => handler(event))
   }
 
   // =========================================================================
@@ -69,6 +99,24 @@ export class ContextManager {
   add(event: ContextEvent): void {
     this.events.push(event)
     this.tokenCount += this.estimateTokens(event)
+
+    // 发出事件
+    this.emit({ type: 'event_added', event })
+
+    // 检查是否达到阈值
+    const usagePercent = this.tokenCount / this.options.maxTokens
+    if (usagePercent >= this.options.autoCompactThreshold) {
+      this.emit({ type: 'threshold_reached', usagePercent })
+    }
+  }
+
+  /**
+   * 批量添加事件
+   */
+  addMany(events: ContextEvent[]): void {
+    for (const event of events) {
+      this.add(event)
+    }
   }
 
   /**
@@ -120,29 +168,35 @@ export class ContextManager {
    * 执行微压缩
    */
   async compact(strategy: 'micro' | 'manual'): Promise<CompactResult> {
+    this.emit({ type: 'compact_start', strategy })
+
     const originalCount = this.events.length
     const originalTokens = this.tokenCount
     const compactedEventIds: string[] = []
 
     if (strategy === 'micro') {
-      this.microCompact()
+      this.microCompact(compactedEventIds)
     }
 
     const savedTokens = originalTokens - this.tokenCount
 
-    return {
+    const result: CompactResult = {
       originalEventCount: originalCount,
       compactedEventCount: this.events.length,
       savedTokens,
       summary: this.generateSummary(strategy),
       compactedEventIds,
     }
+
+    this.emit({ type: 'compact_complete', result })
+
+    return result
   }
 
   /**
    * 微压缩：合并连续消息、截断长输出
    */
-  private microCompact(): void {
+  private microCompact(compactedEventIds: string[]): void {
     const cfg = this.options.microCompactConfig
     const newEvents: ContextEvent[] = []
 
@@ -171,10 +225,12 @@ export class ContextManager {
           const resultStr = JSON.stringify(event.result)
           if (resultStr.length > cfg.maxOutputLength) {
             // 截断并标记
-            event = {
+            newEvents.push({
               ...event,
               result: '[TRUNCATED] ' + resultStr.slice(0, cfg.maxOutputLength),
-            }
+            })
+            compactedEventIds.push(event.id)
+            continue
           }
         }
       }
@@ -182,7 +238,8 @@ export class ContextManager {
       newEvents.push(event)
     }
 
-    this.events = newEvents
+    this.events.length = 0
+    this.events.push(...newEvents)
     this.recalculateTokens()
   }
 
@@ -280,5 +337,6 @@ export class ContextManager {
   clear(): void {
     this.events.length = 0
     this.tokenCount = 0
+    this.emit({ type: 'cleared' })
   }
 }
