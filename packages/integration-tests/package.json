@@ -9,15 +9,16 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@openclaw/suite-core": "workspace:*",
-    "@openclaw/suite-tool-hub": "workspace:*",
-    "@openclaw/suite-permission-hub": "workspace:*",
     "@openclaw/suite-context-hub": "workspace:*",
+    "@openclaw/suite-coordinator-hub": "workspace:*",
+    "@openclaw/suite-core": "workspace:*",
     "@openclaw/suite-mcp-hub": "workspace:*",
-    "@openclaw/suite-coordinator-hub": "workspace:*"
+    "@openclaw/suite-permission-hub": "workspace:*",
+    "@openclaw/suite-tool-hub": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "vitest": "^1.0.0"
   }
 }

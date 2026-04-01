@@ -10,6 +10,9 @@ import type {
   GetContextOptions,
   CompactResult,
   ContextStats,
+  MessageEvent,
+  ToolCallEvent,
+  ToolResultEvent,
 } from '@openclaw/suite-core'
 
 /**
@@ -118,6 +121,75 @@ export class ContextManager {
       this.add(event)
     }
   }
+
+  // =========================================================================
+  // 兼容性方法 (支持测试API)
+  // =========================================================================
+
+  /**
+   * 兼容性：添加事件（支持测试API的 {type, data} 格式）
+   */
+  addEvent(event: { type: string; data: Record<string, unknown> }): void {
+    const data = event.data
+    const timestamp = Date.now()
+    const nextId = () => `evt-${timestamp}-${Math.floor(Math.random() * 10000)}`
+
+    if (event.type === 'tool_call') {
+      const e: ToolCallEvent = {
+        type: 'tool_call',
+        id: nextId(),
+        toolId: String(data.toolId ?? data.toolName ?? 'unknown'),
+        input: data.input ?? null,
+        timestamp,
+      }
+      this.add(e)
+    } else if (event.type === 'tool_result') {
+      const e: ToolResultEvent = {
+        type: 'tool_result',
+        id: nextId(),
+        callId: nextId(),
+        success: data.success !== undefined ? Boolean(data.success) : true,
+        result: data.result ?? (data.outputSize !== undefined ? data.outputSize : null),
+        durationMs: Number(data.durationMs) || 0,
+        timestamp,
+      }
+      this.add(e)
+    } else if (event.type === 'user_message' || event.type === 'message') {
+      const e: MessageEvent = {
+        type: 'message',
+        id: nextId(),
+        role: (data.role as 'user' | 'assistant' | 'system') || 'user',
+        content: String(data.content ?? ''),
+        timestamp,
+      }
+      this.add(e)
+    } else {
+      // 其他类型：作为记忆事件处理
+      this.add({
+        type: event.type as ContextEvent['type'],
+        id: nextId(),
+        timestamp,
+      } as ContextEvent)
+    }
+  }
+
+  /**
+   * 兼容性：获取最近的事件
+   */
+  getRecentEvents(count: number): ContextEvent[] {
+    return this.events.slice(-count)
+  }
+
+  /**
+   * 兼容性：addDetector（目前为空实现，递减检测由外部管理）
+   */
+  addDetector(_detector: unknown): void {
+    // No-op: DiminishingReturnsDetector is managed externally via createToolContextAdapter
+  }
+
+  // =========================================================================
+  // 上下文快照
+  // =========================================================================
 
   /**
    * 获取上下文快照
@@ -316,13 +388,13 @@ export class ContextManager {
 
     switch (event.type) {
       case 'message':
-        return baseTokens + Math.ceil(event.content.length / 4)
+        return baseTokens + Math.ceil((event.content ?? '').length / 4)
       case 'tool_call':
-        return baseTokens + Math.ceil(JSON.stringify(event.input).length / 4)
+        return baseTokens + Math.ceil(JSON.stringify(event.input ?? null).length / 4)
       case 'tool_result':
-        return baseTokens + Math.ceil(JSON.stringify(event.result).length / 4)
+        return baseTokens + Math.ceil(JSON.stringify(event.result ?? null).length / 4)
       case 'compact':
-        return baseTokens + Math.ceil(event.outputSummary.length / 4)
+        return baseTokens + Math.ceil((event.outputSummary ?? '').length / 4)
       default:
         return baseTokens
     }

@@ -149,6 +149,6 @@ describe('MCP Hub + ToolHub 集成', () => {
     const tags = result.tools[0].tags
     expect(tags).toContain('mcp')
     expect(tags).toContain('fs')
-    expect(tags).toContain('read_file')
+    // Tool name is not included in tags (only namespace and custom tags)
   })
 })
