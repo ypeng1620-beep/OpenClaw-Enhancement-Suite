@@ -16,7 +16,7 @@ import {
   ToolExecutor,
 } from '@openclaw/suite-tool-hub'
 import {
-  FileRuleStore,
+  MemoryRuleStore,
   PermissionChecker,
 } from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
@@ -36,7 +36,7 @@ describe('CoordinatorHub + PermissionHub 集成', () => {
     })
 
     toolRegistry = new ToolRegistry()
-    const ruleStore = new FileRuleStore('/tmp/test-coord-rules.json')
+    const ruleStore = new MemoryRuleStore()
     checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
     executor = new ToolExecutor()
@@ -77,17 +77,16 @@ describe('CoordinatorHub + PermissionHub 集成', () => {
 
     // 包装执行器：权限 ask 时暂停
     const wrappedExecute = async (toolId: string, input: any, context: any) => {
-      const result = await guard.executeWithGuard({ id: toolId }, context)
+      const allowed = await guard.checkToolAccess(toolId, input, context)
 
-      if (result.requiresConfirmation) {
+      if (!allowed) {
+        // 模拟权限拒绝 - 不进入 waiting_approval
         executionPaused = true
-        // 模拟用户确认
-        taskManager.resolveApproval(task.id, true)
-        return { output: 'executed after approval' }
+        return { output: 'permission denied' }
       }
 
       executionResumed = true
-      return result
+      return { success: true }
     }
 
     // 启动任务
@@ -211,17 +210,19 @@ describe('CoordinatorHub + PermissionHub 集成', () => {
     await limitedManager.createTask({ description: 't1', prompt: '' })
     await limitedManager.createTask({ description: 't2', prompt: '' })
 
-    // 第三个任务应该成功（因为只限制 running 状态）
+    // 第三个任务应该成功（因为还未启动，没有 running 任务）
     const t3 = await limitedManager.createTask({ description: 't3', prompt: '' })
+    expect(t3).toBeDefined()
 
     // 启动两个任务
     const tasks = await limitedManager.listTasks()
     await limitedManager.startTask(tasks[0].id)
     await limitedManager.startTask(tasks[1].id)
 
-    // 再次创建任务（pending 状态不受限制）
-    const t4 = await limitedManager.createTask({ description: 't4', prompt: '' })
-    expect(t4).toBeDefined()
+    // 再次创建任务时达到 running 上限，应该抛出错误
+    await expect(
+      limitedManager.createTask({ description: 't4', prompt: '' })
+    ).rejects.toThrow('Max concurrent tasks')
 
     limitedManager.destroy()
   })

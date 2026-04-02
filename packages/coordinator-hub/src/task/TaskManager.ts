@@ -445,7 +445,8 @@ export class TaskManager {
     // 向上传播：根据策略处理父任务
     if (task.parentTaskId) {
       const s = strategy ?? this.parentCompletionStrategy
-      if (s === 'fail_parent') {
+      // 'all_success' 策略下，子任务失败也应导致父任务失败
+      if (s === 'fail_parent' || s === 'all_success') {
         await this.handleChildFailure(task.parentTaskId, taskId, error)
       }
       // 'ignore_parent' 策略：不处理父任务
@@ -560,6 +561,9 @@ export class TaskManager {
 
     // 重置重试计数
     this.retryState.delete(taskId)
+
+    // 增加 retryCount
+    await this.store.updateField(taskId, 'retryCount', (task.retryCount || 0) + 1)
 
     // 重置为 pending 并启动
     await this.updateStatus(taskId, { state: 'pending' })

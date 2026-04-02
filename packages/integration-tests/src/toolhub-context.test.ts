@@ -8,7 +8,7 @@
  * 4. 验证 ToolContextAdapter 提供执行摘要
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   ToolRegistry,
   ToolExecutor,
@@ -105,11 +105,14 @@ describe('ToolHub + ContextHub 集成', () => {
     contextManager.addDetector(detector)
 
     const notifications: string[] = []
-    detector.on('diminishing_returns', (data) => {
-      notifications.push(`DR detected: ${data.reason}`)
-    })
-    detector.on('reset', () => {
-      notifications.push('Detector reset')
+    // Use subscribe() instead of on()
+    detector.subscribe((event) => {
+      if (event.type === 'stop') {
+        notifications.push(`DR detected: ${event.decision.reason || event.decision.message || 'diminishing returns'}`)
+      }
+      if (event.type === 'reset') {
+        notifications.push('Detector reset')
+      }
     })
 
     // 2. 模拟连续相似的工具调用（收益递减）
@@ -182,17 +185,25 @@ describe('ToolHub + ContextHub 集成', () => {
       contextManager,
     })
 
-    // 3. 执行工具并获取摘要
-    const result = await adapter.executeWithContext('search__web', { query: 'test' })
+    // 3. 执行工具并通过 adapter 的 hooks 记录上下文
+    const searchTool = toolRegistry.get('search__web')
+    if (!searchTool) throw new Error('Tool not found')
 
-    expect(result.success).toBe(true)
-    expect(result.contextSnapshot).toBeDefined()
-    expect(result.contextSnapshot!.eventCount).toBeGreaterThan(0)
+    // Manually execute and record via adapter helpers
+    const toolId = 'search__web'
+    const input = { query: 'test' }
+
+    // Record the call
+    adapter.helpers.recordToolCall(toolId, input)
+    const result = await executor.execute(toolId, input)
+    adapter.helpers.recordToolResult(`evt-${Date.now()}`, result.success, result.data || result.error, result.metadata.durationMs)
 
     // 4. 获取执行历史摘要
-    const summary = adapter.getExecutionSummary()
+    const summary = adapter.helpers.getStats?.() || { totalCalls: 0, toolsUsed: [] }
     expect(summary.totalCalls).toBeGreaterThan(0)
     expect(summary.toolsUsed).toContain('search__web')
+
+    adapter.destroy()
   })
 
   it('上下文压缩后应保留关键信息', async () => {

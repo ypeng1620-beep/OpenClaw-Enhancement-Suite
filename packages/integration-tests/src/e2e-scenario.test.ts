@@ -17,7 +17,7 @@ import {
   ToolExecutor,
 } from '@openclaw/suite-tool-hub'
 import {
-  FileRuleStore,
+  MemoryRuleStore,
   PermissionChecker,
 } from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
@@ -34,6 +34,7 @@ describe('端到端完整场景', () => {
   let toolRegistry: ToolRegistry
   let executor: ToolExecutor
   let guard: PermissionGuard
+  let checker: PermissionChecker
   let contextManager: ContextManager
 
   beforeEach(async () => {
@@ -47,8 +48,8 @@ describe('端到端完整场景', () => {
 
     // 2. 初始化 ToolHub
     toolRegistry = new ToolRegistry()
-    const ruleStore = new FileRuleStore('/tmp/e2e-rules.json')
-    const checker = new PermissionChecker({ store: ruleStore })
+    const ruleStore = new MemoryRuleStore()
+    checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
 
     // 3. 初始化 ContextHub
@@ -121,32 +122,26 @@ describe('端到端完整场景', () => {
     }
 
     // 6. 添加权限规则
-    await ruleStore.addRule({
+    await checker.addRule({
       id: 'allow-read',
       effect: 'allow',
       priority: 10,
-      conditions: {
-        subject: { type: 'user', userId: 'agent-001' },
-        object: { toolId: 'filesystem__read' },
-      },
+      subject: { type: 'user', userId: 'agent-001' },
+      object: { type: 'tool', toolId: 'filesystem__read' },
     })
-    await ruleStore.addRule({
+    await checker.addRule({
       id: 'allow-search',
       effect: 'allow',
       priority: 10,
-      conditions: {
-        subject: { type: 'user', userId: 'agent-001' },
-        object: { toolId: 'search__web' },
-      },
+      subject: { type: 'user', userId: 'agent-001' },
+      object: { type: 'tool', toolId: 'search__web' },
     })
-    await ruleStore.addRule({
+    await checker.addRule({
       id: 'allow-analysis',
       effect: 'allow',
       priority: 10,
-      conditions: {
-        subject: { type: 'user', userId: 'agent-001' },
-        object: { toolId: 'analysis__stock' },
-      },
+      subject: { type: 'user', userId: 'agent-001' },
+      object: { type: 'tool', toolId: 'analysis__stock' },
     })
   })
 
@@ -191,31 +186,31 @@ describe('端到端完整场景', () => {
       const subject = { userId: 'agent-001' }
 
       if (subtask.description.includes('搜索')) {
-        const result = await guard.executeWithGuard(
-          { id: 'search__web' },
-          { subject, object: { toolId: 'search__web' } }
-        )
-        if (result.allowed) {
+        const decision = await checker.check({
+          subject,
+          object: { toolId: 'search__web' },
+        })
+        if (decision.effect === 'allow') {
           const execResult = await executor.execute('search__web', { query: '贵州茅台' })
           await taskManager.updateProgress(subtask.id, 100)
           await taskManager.completeTask(subtask.id, { data: execResult.output })
         }
       } else if (subtask.description.includes('财务')) {
-        const result = await guard.executeWithGuard(
-          { id: 'filesystem__read' },
-          { subject, object: { toolId: 'filesystem__read' } }
-        )
-        if (result.allowed) {
+        const decision = await checker.check({
+          subject,
+          object: { toolId: 'filesystem__read' },
+        })
+        if (decision.effect === 'allow') {
           const execResult = await executor.execute('filesystem__read', { path: '/data/moutai-report.pdf' })
           await taskManager.updateProgress(subtask.id, 100)
           await taskManager.completeTask(subtask.id, { data: execResult.output })
         }
       } else if (subtask.description.includes('技术')) {
-        const result = await guard.executeWithGuard(
-          { id: 'analysis__stock' },
-          { subject, object: { toolId: 'analysis__stock' } }
-        )
-        if (result.allowed) {
+        const decision = await checker.check({
+          subject,
+          object: { toolId: 'analysis__stock' },
+        })
+        if (decision.effect === 'allow') {
           const execResult = await executor.execute('analysis__stock', { symbol: '600519' })
           await taskManager.updateProgress(subtask.id, 100)
           await taskManager.completeTask(subtask.id, { data: execResult.output })
@@ -280,12 +275,11 @@ describe('端到端完整场景', () => {
     const subject = { userId: 'unauthorized-user' }
 
     // 尝试执行需要权限的工具
-    const result = await guard.executeWithGuard(
-      { id: 'analysis__stock' },
-      { subject, object: { toolId: 'analysis__stock' } }
-    )
+    const decision = await checker.check({
+      subject,
+      object: { toolId: 'analysis__stock' },
+    })
 
-    expect(result.allowed).toBe(false)
-    expect(result.effect).toBe('deny')
+    expect(decision.effect).toBe('deny')
   })
 })

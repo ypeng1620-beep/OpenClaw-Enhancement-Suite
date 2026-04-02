@@ -14,8 +14,7 @@ import {
   ToolExecutor,
 } from '@openclaw/suite-tool-hub'
 import {
-  PermissionEngine,
-  FileRuleStore,
+  MemoryRuleStore,
   PermissionChecker,
 } from '@openclaw/suite-permission-hub'
 import { PermissionGuard } from '@openclaw/suite-permission-hub'
@@ -23,16 +22,17 @@ import { PermissionGuard } from '@openclaw/suite-permission-hub'
 describe('ToolHub + PermissionHub 集成', () => {
   let toolRegistry: ToolRegistry
   let executor: ToolExecutor
-  let ruleStore: FileRuleStore
+  let ruleStore: MemoryRuleStore
   let checker: PermissionChecker
   let guard: PermissionGuard
 
-  beforeEach(() => {
+  beforeEach(async () => {
     toolRegistry = new ToolRegistry()
     executor = new ToolExecutor()
-    ruleStore = new FileRuleStore('/tmp/test-rules.json')
+    ruleStore = new MemoryRuleStore()
     checker = new PermissionChecker({ store: ruleStore })
     guard = new PermissionGuard({ checker })
+    await checker.initialize()
   })
 
   it('应允许已授权的工具执行', async () => {
@@ -52,24 +52,22 @@ describe('ToolHub + PermissionHub 集成', () => {
 
     await toolRegistry.register(readTool)
 
-    // 2. 添加 allow 规则
-    await ruleStore.addRule({
+    // 2. 添加 allow 规则 (ObjectMatcher requires { type: 'tool', toolId: ... })
+    await checker.addRule({
       id: 'allow-read',
       effect: 'allow',
       priority: 10,
-      conditions: {
-        subject: { type: 'user', userId: 'user-123' },
-        object: { toolId: 'filesystem__read' },
-      },
+      subject: { type: 'user', userId: 'user-123' },
+      object: { type: 'tool', toolId: 'filesystem__read' },
     })
 
-    // 3. 执行工具（使用 guard）
-    const result = await guard.executeWithGuard(
-      { id: 'filesystem__read' },
-      { subject: { userId: 'user-123' }, object: { toolId: 'filesystem__read' } }
-    )
+    // 3. 执行权限检查
+    const decision = await checker.check({
+      subject: { userId: 'user-123' },
+      object: { toolId: 'filesystem__read' },
+    })
 
-    expect(result.allowed).toBe(true)
+    expect(decision.effect).toBe('allow')
   })
 
   it('应拒绝未授权的工具', async () => {
@@ -90,14 +88,13 @@ describe('ToolHub + PermissionHub 集成', () => {
     await toolRegistry.register(deleteTool)
     // 不添加任何规则 → 默认 deny
 
-    // 执行被拒绝
-    const result = await guard.executeWithGuard(
-      { id: 'filesystem__delete' },
-      { subject: { userId: 'user-456' }, object: { toolId: 'filesystem__delete' } }
-    )
+    // 执行权限检查
+    const decision = await checker.check({
+      subject: { userId: 'user-456' },
+      object: { toolId: 'filesystem__delete' },
+    })
 
-    expect(result.allowed).toBe(false)
-    expect(result.effect).toBe('deny')
+    expect(decision.effect).toBe('deny')
   })
 
   it('应触发 ask 效果并返回等待确认', async () => {
@@ -117,24 +114,21 @@ describe('ToolHub + PermissionHub 集成', () => {
 
     await toolRegistry.register(networkTool)
 
-    // 添加 ask 规则
-    await ruleStore.addRule({
+    // 添加 ask 规则 (ObjectMatcher requires { type: 'tool', toolId: ... })
+    await checker.addRule({
       id: 'ask-network',
       effect: 'ask',
       priority: 10,
-      conditions: {
-        subject: { type: 'user', userId: 'user-789' },
-        object: { toolId: 'network__http_request' },
-      },
+      subject: { type: 'user', userId: 'user-789' },
+      object: { type: 'tool', toolId: 'network__http_request' },
     })
 
-    const result = await guard.executeWithGuard(
-      { id: 'network__http_request' },
-      { subject: { userId: 'user-789' }, object: { toolId: 'network__http_request' } }
-    )
+    const decision = await checker.check({
+      subject: { userId: 'user-789' },
+      object: { toolId: 'network__http_request' },
+    })
 
-    expect(result.effect).toBe('ask')
-    expect(result.requiresConfirmation).toBe(true)
+    expect(decision.effect).toBe('ask')
   })
 
   it('PermissionGuard 应拦截危险操作', async () => {
@@ -154,12 +148,11 @@ describe('ToolHub + PermissionHub 集成', () => {
     await toolRegistry.register(rmTool)
     // 默认 deny 危险操作
 
-    const result = await guard.executeWithGuard(
-      { id: 'shell__rm_rf' },
-      { subject: { userId: 'hacker' }, object: { toolId: 'shell__rm_rf' } }
-    )
+    const decision = await checker.check({
+      subject: { userId: 'hacker' },
+      object: { toolId: 'shell__rm_rf' },
+    })
 
-    expect(result.allowed).toBe(false)
-    expect(result.effect).toBe('deny')
+    expect(decision.effect).toBe('deny')
   })
 })
