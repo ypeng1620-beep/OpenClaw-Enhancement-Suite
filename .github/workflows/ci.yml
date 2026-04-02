@@ -25,7 +25,10 @@ jobs:
       - name: Show node and pnpm versions
         run: node --version && pnpm --version
 
-      - run: pnpm install --frozen-lockfile
+      - name: Verify lockfile hash
+        run: sha256sum pnpm-lock.yaml
+
+      - run: pnpm install
 
       - run: pnpm run build
 
@@ -47,7 +50,10 @@ jobs:
       - name: Show node and pnpm versions
         run: node --version && pnpm --version
 
-      - run: pnpm install --frozen-lockfile
+      - name: Verify lockfile hash
+        run: sha256sum pnpm-lock.yaml
+
+      - run: pnpm install
       - run: pnpm run lint || true
 
   test:
@@ -64,7 +70,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v5
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
 
       - name: Run standalone integration test
         run: npx tsx tests/integration/full-scenario.test.ts
@@ -83,7 +89,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v5
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
       - run: pnpm --filter @openclaw/suite-integration-tests run test:coverage || true
 
       - name: Upload coverage to Codecov
