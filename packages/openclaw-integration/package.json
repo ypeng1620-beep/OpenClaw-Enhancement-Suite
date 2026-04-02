@@ -21,7 +21,7 @@
     "@openclaw/suite-coordinator-hub": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^25.5.0"
   },
   "engines": {
     "node": ">=20.0.0"
