@@ -118,6 +118,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.37
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.37)
 
   packages/tool-hub:
     dependencies:
@@ -128,6 +131,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.37
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.37)
 
   tests:
     dependencies:
