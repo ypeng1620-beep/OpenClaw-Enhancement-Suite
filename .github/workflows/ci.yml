@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TURBO_REMOTE_CACHE_READY: "false"
 
 jobs:
   build:
@@ -23,17 +23,14 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6
 
+      - name: Show node and pnpm versions
+        run: node --version && pnpm --version
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: "ypeng"
 
       - run: pnpm run build --filter @openclaw/suite-integration-tests
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: "ypeng"
 
   lint:
     name: Lint
@@ -47,6 +44,9 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
+
+      - name: Show node and pnpm versions
+        run: node --version && pnpm --version
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint || true
