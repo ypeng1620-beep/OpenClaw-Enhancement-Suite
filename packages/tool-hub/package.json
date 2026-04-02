@@ -20,14 +20,15 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test": "vitest run",
     "demo": "npx tsx examples/demo.ts"
   },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "vitest": "^1.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

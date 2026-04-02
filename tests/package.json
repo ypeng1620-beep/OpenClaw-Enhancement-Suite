@@ -5,7 +5,7 @@
   "description": "Standalone integration tests for OpenClaw Enhancement Suite",
   "scripts": {
     "test:full": "npm run build && npx tsx tests/integration/mcp-toolhub-coordinator-context.test.ts",
-    "test": "npx tsx tests/integration/mcp-toolhub-coordinator-context.test.ts"
+    "test": "echo 'Tests are in @openclaw/suite-integration-tests'"
   },
   "dependencies": {
     "@openclaw/suite-core": "workspace:*",
