@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - name: Install dependencies
         run: pnpm install
       - name: Build
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - name: Install dependencies
         run: pnpm install
       - name: Lint
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - name: Install dependencies
         run: pnpm install
       - name: Run tests
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - name: Install dependencies
         run: pnpm install
       - name: Run coverage
