@@ -68,7 +68,7 @@ jobs:
         run: pnpm --filter @openclaw/suite-integration-tests run test:coverage || true
       - name: Upload coverage
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage/lcov.info
           fail_ci_if_error: false
