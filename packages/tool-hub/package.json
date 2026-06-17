@@ -27,7 +27,7 @@
     "@openclaw/suite-core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^25.9.3",
     "vitest": "^1.0.0"
   },
   "engines": {
